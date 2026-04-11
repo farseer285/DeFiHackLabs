@@ -1,1 +1,2 @@
 forge-std/=lib/forge-std/src/
+@balancer-labs/=node_modules/@balancer-labs/
