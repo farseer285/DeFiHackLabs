@@ -6,7 +6,7 @@ fs_permissions = [{ access = "read", path = "./"}]
 evm_version = 'shanghai'
 
 [rpc_endpoints]
-mainnet = "https://ethereum-rpc.publicnode.com"
+mainnet = "https://ethereum-rpc.publicnode.com" # https://eth-mainnet.public.blastapi.io
 blast = "https://rpc.ankr.com/blast"
 optimism = "https://optimism.llamarpc.com"
 fantom = "https://fantom-pokt.nodies.app"
