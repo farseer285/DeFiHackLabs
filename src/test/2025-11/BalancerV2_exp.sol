@@ -12,6 +12,12 @@ import "../StableMath.sol";
 // Withdrawal Tx: https://app.blocksec.com/explorer/tx/eth/0xd155207261712c35fa3d472ed1e51bfcd816e616dd4f517fa5959836f5b48569
 
 // @Info
+// Whitehat back-run/rescue bot
+// Rescue bot    : https://etherscan.io/address/0x5af00b073abb9f88832353bd4c919caaa114c972
+// Back-run Tx   : https://app.blocksec.com/phalcon/explorer/tx/eth/0x1dc60f917e4d841f281e827cf82f93c7355e08f5855e9ae5b0a1764b38ed4b87
+// Withdrawal Tx : https://app.blocksec.com/phalcon/explorer/tx/eth/0x0d6f2d90c543e137b59318d6c557f772fa638da757c2c8c095c7076d6fbb159d
+
+// @Info
 // Vulnerable Contract Code : 
 
 // @Analysis
