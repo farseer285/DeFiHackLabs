@@ -26,6 +26,16 @@ import "../StableMath.sol";
 // Twitter Guy : https://x.com/BlockSecTeam/status/1986057732810518640, https://x.com/SlowMist_Team/status/1986379316935205299, https://x.com/hklst4r/status/1985872151077953827
 // Hacking God : N/A
 
+// @Variant — purpose of THIS file vs BalancerV2_exp.sol
+// This is the SAME attack as BalancerV2_exp.sol, but gas-optimized. Instead of a
+// re-implemented Solidity math helper, it injects (via vm.etch, in setUp) the EXACT real
+// on-chain runtime bytecode of the attacker's math helper contract
+// 0x679B362B9f38BE63FbD4A499413141A997eb381e. That helper was deployed IN the attack's own
+// block (23717397), so it is absent from the pre-attack fork state (23717396); etching it in
+// lets the phase-2 precompute run the very math the attacker actually used, which saves gas.
+// The pool state is untouched and the attack result is unchanged. The internal test contract
+// is named ContractTest679B, referencing that 0x679B... helper.
+
 address constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 address constant balancer = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 address constant osETH_wETH = 0xDACf5Fa19b1f720111609043ac67A9818262850c;
